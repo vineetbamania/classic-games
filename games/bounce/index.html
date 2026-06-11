@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Bounce</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#020812;font-family:"Courier New",monospace;touch-action:none;user-select:none;-webkit-touch-action:none;-webkit-user-select:none}
+.wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;gap:4px;padding:4px}
+canvas{border:2px solid #0a3060;border-radius:4px;image-rendering:pixelated;image-rendering:crisp-edges;width:min(100vw - 16px,100vh - 48px,256px);height:min(100vw - 16px,100vh - 48px,256px);aspect-ratio:1/1;background:#0853aa}
+.hud{display:flex;justify-content:space-between;width:min(100vw - 16px,256px);color:#5a8ab0;font-size:10px;padding:0 4px}
+.hud .hearts{color:#e44}
+@media(max-width:140px),(max-height:160px){.hud{font-size:8px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<canvas id="c"></canvas>
+<div class="hud"><span id="hlvl">Level 1</span><span id="hlives" class="hearts">♥♥♥</span><span id="hscore">Score: 0</span></div>
+</div>
+<script>
+// ==================== CONSTANTS ====================
+var W=128, H=128, T=12, S=2; // game size, tile size, canvas scale
+var GRAVITY=0.3, BOUNCE=-5.5, MAXSPD=2.2, ACCEL=0.35, FRIC=0.85, BALLR=5;
+var JUMP=-6.0;
+var canvas, ctx, sheet, sheetReady=false;
+
+// ==================== TILE → SPRITE MAPPING (from d.b[] in JAR) ====================
+// d.b[masked-13] gives sprite index. We map directly to spritesheet 0-23.
+var SPRMAP = {
+    1:0, 2:1, 3:2, 5:3, 7:4, 9:5, 10:6,
+    13:8, 14:9, 15:4, 16:5, 17:10, 18:10, 19:6, 20:6,
+    21:7, 22:7, 23:3, 24:3, 25:8, 26:9, 27:4, 28:5,
+    30:12, 31:12, 32:13, 33:13, 38:14, 39:14, 41:15, 43:2,
+    64:8, 96:8, 97:8
+};
+function tileToSprite(v){ var b=v&0xBF; return SPRMAP.hasOwnProperty(b)?SPRMAP[b]:b%24; }
+
+// Solid / spike / ring sets
+var SOLID={}, SPIKE={}, RING={};
+[1,2,10,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,30,31,32,33,38,39,41,43,96,97].forEach(function(v){SOLID[v]=SOLID[v|64]=true});
+SPIKE[3]=SPIKE[3|64]=true;
+RING[29]=RING[29|64]=true;
+
+// ==================== GAME STATE ====================
+var phase='title', level=1, score=0, lives=3, levData=null;
+var ball, camX=0, camY=0, shake=0, transTimer=0;
+
+// ==================== INPUT ====================
+var left=false, right=false, jump=false, actQ=[];
+window.addEventListener('keydown',function(e){
+    switch(e.key){case'ArrowLeft':case'Left':case'a':left=true;break;case'ArrowRight':case'Right':case'd':right=true;break;case'ArrowUp':case'Up':case'w':jump=true;break;case' ':case'Enter':e.preventDefault();actQ.push('menu');break;case'p':case'P':actQ.push('pause');break}
+});
+window.addEventListener('keyup',function(e){
+    switch(e.key){case'ArrowLeft':case'Left':case'a':left=false;break;case'ArrowRight':case'Right':case'd':right=false;break;case'ArrowUp':case'Up':case'w':jump=false;break}
+});
+
+// ==================== LEVEL LOADING ====================
+function loadLevel(n){
+    var lv=LEVELS[String(n)]; if(!lv) return false;
+    levData={num:n, sx:lv.sx, sy:lv.sy, gdir:lv.g, cols:lv.c, rows:lv.r, tiles:lv.t, col:new Array(lv.t.length)};
+    ball={x:levData.sx*T+T/2, y:levData.sy*T+T/2, vx:0, vy:BOUNCE*(levData.gdir?-1:1), r:BALLR, onGround:false, faceT:0};
+    camX=ball.x-W/2; camY=ball.y-H/2;
+    return true;
+}
+
+// ==================== PHYSICS ====================
+function getTile(col,row){
+    if(col<0||col>=levData.cols||row<0||row>=levData.rows) return 1;
+    var idx=row*levData.cols+col, t=levData.tiles[idx];
+    return RING[t]&&levData.col[idx]?0:t;
+}
+function tileAt(px,py){ return getTile(Math.floor(px/T),Math.floor(py/T)); }
+
+function update(){
+    if(phase==='levelComplete'){ transTimer--; if(transTimer<=0) advanceLevel(); return; }
+    if(phase!=='playing'||!levData) return;
+
+    var gd=levData.gdir?-1:1, b=ball;
+
+    if(left)b.vx-=ACCEL; if(right)b.vx+=ACCEL;
+    if(b.vx>MAXSPD)b.vx=MAXSPD; if(b.vx<-MAXSPD)b.vx=-MAXSPD;
+    if(!left&&!right){ b.vx*=FRIC; if(b.vx>-0.03&&b.vx<0.03)b.vx=0; }
+
+    if(jump&&b.onGround){ b.vy=JUMP*gd; b.onGround=false; }
+
+    b.vy+=GRAVITY*gd;
+    b.x+=b.vx;
+
+    // Horizontal collision
+    var lt=tileAt(b.x-b.r,b.y), rt=tileAt(b.x+b.r,b.y);
+    if(SPIKE[lt]||SPIKE[rt]){ die(); return; }
+    if(SOLID[lt]){ b.x=(Math.floor((b.x-b.r)/T)+1)*T+b.r; b.vx=Math.abs(b.vx)*0.3; }
+    if(SOLID[rt]){ b.x=Math.floor((b.x+b.r)/T)*T-b.r; b.vx=-Math.abs(b.vx)*0.3; }
+
+    // Wrap
+    var mw=levData.cols*T;
+    if(b.x<-b.r)b.x=mw+b.r; if(b.x>mw+b.r)b.x=-b.r;
+
+    b.y+=b.vy; b.onGround=false;
+
+    // Vertical collision
+    if(b.vy>0){
+        var bl=tileAt(b.x-b.r+2,b.y+b.r), br=tileAt(b.x+b.r-2,b.y+b.r), bm=tileAt(b.x,b.y+b.r);
+        if(SPIKE[bl]||SPIKE[br]||SPIKE[bm]){ die(); return; }
+        if(SOLID[bl]||SOLID[br]||SOLID[bm]){
+            b.y=Math.floor((b.y+b.r)/T)*T-b.r; b.vy=BOUNCE*gd; b.onGround=true; b.faceT=8;
+        }
+    }else if(b.vy<0){
+        var tl=tileAt(b.x-b.r+2,b.y-b.r), tr=tileAt(b.x+b.r-2,b.y-b.r), tm=tileAt(b.x,b.y-b.r);
+        if(SOLID[tl]||SOLID[tr]||SOLID[tm]){ b.y=(Math.floor((b.y-b.r)/T)+1)*T+b.r; b.vy=0; }
+    }
+
+    // Rings
+    for(var row=Math.floor((b.y-T)/T);row<=Math.floor((b.y+T)/T);row++){
+        for(var col=Math.floor((b.x-T)/T);col<=Math.floor((b.x+T)/T);col++){
+            var t=getTile(col,row);
+            if(RING[t]){ var idx=row*levData.cols+col;
+                if(!levData.col[idx]){
+                    var rx=col*T+T/2, ry=row*T+T/2, dx=b.x-rx, dy=b.y-ry;
+                    if(dx*dx+dy*dy<(b.r+5)*(b.r+5)){ levData.col[idx]=true; score+=100; refreshHUD(); }
+                }
+            }
+        }
+    }
+
+    // Camera
+    camX+=(b.x-W/2-camX)*0.08; camY+=(b.y-H/2+20-camY)*0.08;
+    var mx=levData.cols*T-W, my=levData.rows*T-H;
+    if(camX<-20)camX=-20; if(camX>mx+20)camX=mx+20;
+    if(camY<-20)camY=-20; if(camY>my+20)camY=my+20;
+
+    if(gd>0){ if(b.y>camY+H+60) die(); if(b.y<-20) levelComplete(); }
+    else    { if(b.y<camY-60) die(); if(b.y>levData.rows*T+20) levelComplete(); }
+
+    if(b.faceT>0)b.faceT--;
+}
+
+function die(){ lives--; shake=12; if(lives<=0)phase='gameover'; else{loadLevel(level);phase='playing';} refreshHUD(); }
+function levelComplete(){ phase='levelComplete'; score+=500; transTimer=90; refreshHUD(); }
+function advanceLevel(){ level++; if(level>11){level=1;score=0;lives=3;} loadLevel(level); phase='playing'; refreshHUD(); }
+
+// ==================== RENDER ====================
+function drawSprite(idx, x, y){
+    if(!sheetReady||idx<0) return;
+    var sx=(idx%4)*T, sy=Math.floor(idx/4)*T;
+    ctx.drawImage(sheet, sx, sy, T, T, x, y, T, T);
+}
+
+function drawTile(v, x, y){
+    if(RING[v]){
+        var cx=x+T/2, cy=y+T/2;
+        ctx.strokeStyle='#f0d12e'; ctx.lineWidth=1.5;
+        ctx.beginPath(); ctx.arc(cx,cy,4,0,Math.PI*2); ctx.stroke();
+        ctx.fillStyle='#ffe860'; ctx.fillRect(cx-1,cy-5,2,2);
+        return;
+    }
+    if(SPIKE[v]){
+        ctx.fillStyle='#de2529'; ctx.beginPath();
+        ctx.moveTo(x,y+T); ctx.lineTo(x+T/2,y); ctx.lineTo(x+T,y+T); ctx.fill();
+        ctx.fillStyle='#ff4040'; ctx.beginPath();
+        ctx.moveTo(x+2,y+T); ctx.lineTo(x+T/2,y+2); ctx.lineTo(x+T-2,y+T); ctx.fill();
+        return;
+    }
+    // Blit from spritesheet
+    drawSprite(tileToSprite(v), x, y);
+}
+
+function drawBall(bx, by){
+    var r=BALLR;
+    // Shadow
+    ctx.fillStyle='rgba(0,0,0,0.4)';
+    ctx.beginPath(); ctx.ellipse(bx,by+r+1,r*0.8,r*0.3,0,0,Math.PI*2); ctx.fill();
+    // Body - exact original red
+    var g=ctx.createRadialGradient(bx-1.5,by-1.5,1,bx,by,r);
+    g.addColorStop(0,'#ff6040'); g.addColorStop(0.3,'#d42910'); g.addColorStop(1,'#6a0808');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(bx,by,r,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='#4a0404'; ctx.lineWidth=0.8; ctx.stroke();
+    // Highlight
+    ctx.fillStyle='rgba(255,255,255,0.4)';
+    ctx.beginPath(); ctx.arc(bx-1.5,by-1.5,1.2,0,Math.PI*2); ctx.fill();
+    // Face
+    if(ball.onGround&&ball.faceT>0){ ctx.fillStyle='#fff'; ctx.fillRect(bx-2,by-1,4,1); ctx.fillRect(bx-3,by,6,1); }
+    else if(ball.vy<-3){ ctx.fillStyle='#fff'; ctx.fillRect(bx-1,by-3,2,2); ctx.fillRect(bx-2,by-2,4,1); }
+}
+
+function render(){
+    ctx.fillStyle='#0853aa'; ctx.fillRect(0,0,W,H);
+    if(shake>0){ var sx=(Math.random()-0.5)*6, sy=(Math.random()-0.5)*6; ctx.save(); ctx.translate(sx,sy); shake--; drawWorld(); ctx.restore(); }
+    else drawWorld();
+    drawHUD();
+    drawOverlay();
+}
+
+function drawWorld(){
+    if(!levData) return;
+    var ox=Math.floor(camX), oy=Math.floor(camY);
+    // Grid
+    ctx.strokeStyle='rgba(255,255,255,0.04)'; ctx.lineWidth=0.5;
+    for(var gx=-(ox%16);gx<W;gx+=16){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,H);ctx.stroke()}
+    for(var gy=-(oy%16);gy<H;gy+=16){ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(W,gy);ctx.stroke()}
+    // Tiles
+    var sc=Math.max(0,Math.floor(ox/T)), ec=Math.min(levData.cols,Math.ceil((ox+W)/T)+1);
+    var sr=Math.max(0,Math.floor(oy/T)), er=Math.min(levData.rows,Math.ceil((oy+H)/T)+1);
+    for(var r=sr;r<er;r++) for(var c=sc;c<ec;c++){
+        var idx=r*levData.cols+c, v=levData.tiles[idx];
+        if(v===0||(RING[v]&&levData.col[idx])) continue;
+        drawTile(v, c*T-ox, r*T-oy);
+    }
+    drawBall(ball.x-ox, ball.y-oy);
+}
+
+function drawHUD(){
+    ctx.fillStyle='rgba(0,0,0,0.4)'; ctx.fillRect(0,0,W,14);
+    ctx.fillStyle='#fff'; ctx.font='bold 7px "Courier New",monospace';
+    ctx.textAlign='left'; ctx.fillText('LV'+level,4,10);
+    ctx.textAlign='right'; ctx.fillText(String(score),W-4,10);
+    ctx.textAlign='center';
+    for(var i=0;i<lives;i++) ctx.fillText('♥',W/2-10+i*10,10);
+}
+
+function drawOverlay(){
+    if(phase==='title'){
+        ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(0,0,W,H);
+        ctx.fillStyle='#fff'; ctx.font='bold 9px "Courier New",monospace'; ctx.textAlign='center';
+        ctx.fillText('NOKIA BOUNCE',W/2,48);
+        ctx.font='7px "Courier New",monospace';
+        ctx.fillText('11 Original Levels',W/2,62);
+        ctx.fillText('← → Move  ↑ Jump',W/2,78);
+        ctx.fillText('Space / Enter to start',W/2,94);
+    }else if(phase==='paused'){
+        ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(0,0,W,H);
+        ctx.fillStyle='#fff'; ctx.font='bold 9px "Courier New",monospace'; ctx.textAlign='center';
+        ctx.fillText('PAUSED',W/2,60);
+    }else if(phase==='gameover'){
+        ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(0,0,W,H);
+        ctx.fillStyle='#e03020'; ctx.font='bold 9px "Courier New",monospace'; ctx.textAlign='center';
+        ctx.fillText('GAME OVER',W/2,52);
+        ctx.fillStyle='#fff'; ctx.font='7px "Courier New",monospace';
+        ctx.fillText('Score: '+score,W/2,68);
+        ctx.fillText('Press Enter to retry',W/2,82);
+    }else if(phase==='levelComplete'){
+        ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(0,0,W,H);
+        ctx.fillStyle='#fff'; ctx.font='bold 9px "Courier New",monospace'; ctx.textAlign='center';
+        ctx.fillText('LEVEL '+level+' CLEAR!',W/2,60);
+    }
+}
+
+// ==================== HUD ====================
+function refreshHUD(){
+    document.getElementById('hlvl').textContent='Level '+level;
+    document.getElementById('hscore').textContent='Score: '+score;
+    var h=''; for(var i=0;i<lives;i++)h+='♥';
+    document.getElementById('hlives').textContent=h;
+}
+
+// ==================== LOOP ====================
+function loop(){
+    var act;
+    while((act=actQ.shift())){
+        switch(phase){
+            case'title':if(act==='menu'){score=0;lives=3;level=1;loadLevel(1);phase='playing';refreshHUD()}break;
+            case'gameover':if(act==='menu'){loadLevel(level);phase='playing';refreshHUD()}break;
+            case'playing':if(act==='pause')phase='paused';break;
+            case'paused':if(act==='menu'||act==='pause')phase='playing';break;
+        }
+    }
+    update();
+    render();
+    requestAnimationFrame(loop);
+}
+
+// ==================== BOOT ====================
+sheet=new Image();
+sheet.onload=function(){sheetReady=true};
+sheet.src='games/bounce/assets/sprites.png';
+
+canvas=document.getElementById('c');
+canvas.width=W*S; canvas.height=H*S;
+ctx=canvas.getContext('2d');
+ctx.scale(S,S);
+ctx.imageSmoothingEnabled=false;
+
+loadLevel(1);
+refreshHUD();
+loop();
+</script>
+<script src="games/bounce/js/leveldata.js"></script>
+</body>
+</html>

@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+        />
+        <title>CloudFone Games</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            html,
+            body {
+                width: 100%;
+                height: 100%;
+                overflow: hidden;
+                background: #020812;
+                font-family: "Courier New", monospace;
+                touch-action: none;
+                user-select: none;
+                -webkit-touch-action: none;
+                -webkit-user-select: none;
+            }
+            .menu {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                width: 100%;
+                height: 100%;
+                gap: 12px;
+                padding: 8px;
+            }
+            .title {
+                color: #5a8ab0;
+                font-size: 12px;
+                font-weight: bold;
+                text-align: center;
+                letter-spacing: 2px;
+            }
+            .subtitle {
+                color: #3a5a70;
+                font-size: 8px;
+                text-align: center;
+            }
+            .game-list {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+                width: min(100%, 220px);
+            }
+            .game-item {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 8px 12px;
+                background: #0a1a30;
+                border: 2px solid #1a3a60;
+                border-radius: 6px;
+                cursor: pointer;
+                transition: all 0.1s;
+                text-decoration: none;
+                color: #5a8ab0;
+                font-size: 10px;
+            }
+            .game-item:hover,
+            .game-item:focus,
+            .game-item.active {
+                background: #1a3a60;
+                border-color: #2a5a90;
+                color: #8ac0e0;
+                outline: none;
+            }
+            .game-icon {
+                width: 28px;
+                height: 28px;
+                background: #0853aa;
+                border-radius: 4px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 16px;
+                flex-shrink: 0;
+            }
+            .game-info {
+                display: flex;
+                flex-direction: column;
+            }
+            .game-name {
+                font-weight: bold;
+            }
+            .game-desc {
+                font-size: 7px;
+                color: #3a5a70;
+            }
+            .game-item.active .game-desc {
+                color: #5a8ab0;
+            }
+            .footer {
+                color: #2a4a60;
+                font-size: 7px;
+                text-align: center;
+                margin-top: 8px;
+            }
+
+            @media (max-width: 140px), (max-height: 160px) {
+                .title {
+                    font-size: 10px;
+                }
+                .game-item {
+                    padding: 6px 8px;
+                    gap: 6px;
+                    font-size: 8px;
+                }
+                .game-icon {
+                    width: 22px;
+                    height: 22px;
+                    font-size: 12px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="menu">
+            <div class="title">CLOUDFONE</div>
+            <div class="subtitle">Select a game</div>
+
+            <div class="game-list" id="game-list">
+                <a
+                    href="games/bounce/index.html"
+                    class="game-item"
+                    data-index="0"
+                >
+                    <div class="game-icon">&#9679;</div>
+                    <div class="game-info">
+                        <span class="game-name">Bounce</span>
+                        <span class="game-desc"
+                            >Classic Nokia ball game &middot; 11 levels</span
+                        >
+                    </div>
+                </a>
+
+                <!-- More games can be added here -->
+            </div>
+
+            <div class="footer">
+                &#8592; &#8593; &#8595; &#8594; Navigate &middot; Enter Launch
+            </div>
+        </div>
+
+        <script>
+            (function () {
+                var items = document.querySelectorAll(".game-item");
+                var index = 0;
+                if (items.length === 0) return;
+
+                function highlight(i) {
+                    for (var j = 0; j < items.length; j++) {
+                        items[j].classList.remove("active");
+                    }
+                    index = ((i % items.length) + items.length) % items.length;
+                    items[index].classList.add("active");
+                    items[index].focus();
+                }
+
+                highlight(0);
+
+                window.addEventListener("keydown", function (e) {
+                    switch (e.key) {
+                        case "ArrowDown":
+                        case "Down":
+                        case "s":
+                            e.preventDefault();
+                            highlight(index + 1);
+                            break;
+                        case "ArrowUp":
+                        case "Up":
+                        case "w":
+                            e.preventDefault();
+                            highlight(index - 1);
+                            break;
+                        case "Enter":
+                        case " ":
+                        case "Spacebar":
+                            e.preventDefault();
+                            items[index].click();
+                            break;
+                    }
+                });
+            })();
+        </script>
+    </body>
+</html>
