@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+        />
+        <title>CloudFM</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            html,
+            body {
+                width: 100%;
+                height: 100%;
+                overflow: hidden;
+                background: #020812;
+                color: #5a8ab0;
+                font-family: "Courier New", monospace;
+                font-size: 11px;
+                touch-action: none;
+                user-select: none;
+                -webkit-user-select: none;
+            }
+            .app {
+                display: flex;
+                flex-direction: column;
+                width: 100%;
+                height: 100%;
+            }
+            .hdr {
+                flex: 0 0 auto;
+                padding: 4px 6px;
+                color: #8ac0e0;
+                font-weight: bold;
+                background: #0a1a30;
+                border-bottom: 1px solid #1a3a60;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .body {
+                flex: 1 1 auto;
+                overflow-y: auto;
+                overflow-x: hidden;
+            }
+            .ftr {
+                flex: 0 0 auto;
+                padding: 3px 6px;
+                font-size: 8px;
+                color: #3a5a70;
+                background: #0a1a30;
+                border-top: 1px solid #1a3a60;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .row {
+                display: flex;
+                justify-content: space-between;
+                gap: 6px;
+                padding: 4px 6px;
+                border-bottom: 1px solid #0d1f33;
+                white-space: nowrap;
+                overflow: hidden;
+            }
+            .row .nm {
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .row .mt {
+                flex: 0 0 auto;
+                color: #3a5a70;
+                font-size: 8px;
+                align-self: center;
+            }
+            .row.sel {
+                background: #1a3a60;
+                color: #8ac0e0;
+            }
+            .row.sel .mt {
+                color: #5a8ab0;
+            }
+            .msg {
+                padding: 16px 8px;
+                text-align: center;
+                color: #3a5a70;
+            }
+            /* now-playing */
+            .np-name {
+                padding: 10px 8px 2px;
+                color: #8ac0e0;
+                font-weight: bold;
+                font-size: 13px;
+                text-align: center;
+                word-break: break-word;
+            }
+            .np-meta {
+                text-align: center;
+                font-size: 8px;
+                color: #3a5a70;
+            }
+            .np-status {
+                text-align: center;
+                margin-top: 10px;
+                color: #5a8ab0;
+            }
+            .np-vol {
+                text-align: center;
+                margin-top: 8px;
+                letter-spacing: 1px;
+                color: #0853aa;
+            }
+            @media (max-width: 140px), (max-height: 160px) {
+                html,
+                body {
+                    font-size: 9px;
+                }
+                .np-name {
+                    font-size: 11px;
+                }
+                .ftr {
+                    font-size: 7px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="app">
+            <div class="hdr" id="hdr">CloudFM</div>
+            <div class="body" id="body"></div>
+            <div class="ftr" id="ftr"></div>
+        </div>
+        <audio id="audio"></audio>
+
+        <!-- Modules load in order; app.js boots last.
+             api.js    - Radio-Browser (free/open) client + genres + fallback
+             player.js - <audio> wrapper (play/pause/volume/state events)
+             ui.js     - DOM rendering of the current screen
+             app.js    - state machine, T9/D-pad input, boot -->
+        <script src="js/api.js"></script>
+        <script src="js/player.js"></script>
+        <script src="js/ui.js"></script>
+        <script src="js/app.js"></script>
+    </body>
+</html>

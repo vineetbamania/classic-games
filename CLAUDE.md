@@ -54,6 +54,16 @@ Key pieces:
 ### Reverse-engineering tools
 `tools/jdis.py` is a dependency-free (no JDK) JVM `.class` disassembler used to recover the tile renderer from the obfuscated JAR. `Cls(path)` parses the constant pool/fields/methods; `disasm(cls, name, desc)` prints bytecode. This is how `atlas.js`'s `DA`/`DB`/`ATLAS`/`TILE` tables were derived from classes `b` (renderer) and `d` (the two `int[]` composite tables) — re-run it against `/tmp` JAR extractions if tile mappings ever need re-verifying.
 
+### CloudFM — internet radio (games/music/)
+The second app: a feature-phone internet-radio player. Same zero-build, modular,
+script-tags-in-order pattern as Bounce, but **DOM-based** (lists/text, not canvas)
+and **discrete input** — which deliberately sidesteps the held-button/dropped-keyup
+problem that plagues a real-time game over Cloud Phone's remote key channel.
+- `js/api.js` — [Radio-Browser](https://www.radio-browser.info) client (free/open, no key). Tries several mirror hosts in order; keeps **https streams only** (an https page can't play http audio — mixed content); falls back to a built-in SomaFM list if every mirror is unreachable. `GENRES` defines the browse categories.
+- `js/player.js` — thin `<audio>` wrapper; surfaces loading/buffering/playing/paused/error via a state callback. Audio reaches the handset because Cloud Phone streams it (HLS/audio confirmed supported); playback starts from a keypress (gesture) to satisfy autoplay policy.
+- `js/ui.js` — renders the three screens (`home` genres → `list` stations → `now` playing) from global state `S`, scrolling the selected row into view.
+- `js/app.js` — state machine + input. **Nav keys (up/down) auto-repeat** (hold to scroll/ramp volume); **action keys (OK/back/mute) ignore `e.repeat`** + a 150ms debounce so a held button can't cascade through screens. Keys resolve by `keyCode` first, `key` second (T9 digits arrive inconsistently as one or the other).
+
 ### Adding a game
 Add a folder under `games/`, then add a `.game-item` `<a>` linking to it in the root `index.html` `#game-list` (there's a `<!-- More games can be added here -->` marker). The menu's arrow-key navigation script picks up new items automatically.
 
