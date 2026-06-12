@@ -20,13 +20,16 @@ var canvas,
     sheetReady = false;
 
 // ---- collision sets (physics; independent of the visual atlas) ----
+// Determined from the level data + JAR collision class: only tiles 1, 2 and 10
+// form structural walls/floors (long contiguous runs across every level). All
+// other non-empty tiles (13,14,…,29,30…) are isolated *objects* that sit inside
+// open corridors — the ball passes through them, so they must NOT be solid, or
+// they seal the level (e.g. the 13/14 pair that used to wall off level 1).
+// Bit 6 (64) is a variant flag, so each value is registered with and without it.
 var SOLID = {},
     SPIKE = {},
     RING = {};
-[
-    1, 2, 10, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,
-    30, 31, 32, 33, 38, 39, 41, 43, 96, 97,
-].forEach(function (v) {
+[1, 2, 10].forEach(function (v) {
     SOLID[v] = SOLID[v | 64] = true;
 });
 SPIKE[3] = SPIKE[3 | 64] = true;
