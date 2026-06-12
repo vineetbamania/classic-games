@@ -106,6 +106,19 @@
                 color: #6b7888;
                 line-height: 1.5;
             }
+            .gobtn {
+                justify-content: center;
+                background: rgba(78, 161, 255, 0.18);
+                border: 1px solid #4ea1ff;
+                color: #cfe4ff;
+                font-weight: 700;
+                letter-spacing: 1px;
+            }
+            .gobtn.sel {
+                background: #4ea1ff;
+                color: #04101f;
+                box-shadow: 0 3px 12px rgba(78, 161, 255, 0.4);
+            }
             .search-in {
                 display: none;
                 width: calc(100% - 16px);
@@ -283,6 +296,7 @@
              app.js       - screen-stack state machine, T9/D-pad input, boot -->
         <script src="js/api.js"></script>
         <script src="js/songs.js"></script>
+        <script src="js/jiosaavn.js"></script>
         <script src="js/previews.js"></script>
         <script src="js/yt.js"></script>
         <script src="js/favorites.js"></script>

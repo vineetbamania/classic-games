@@ -27,6 +27,7 @@ function srcTag(it) {
     return (it.bitrate ? it.bitrate + "k " : "") + (it.countrycode || "");
 }
 function srcLabel(it) {
+    if (it.src === "saavn") return "JioSaavn · full song";
     if (it.src === "itunes") return "iTunes · 30-sec preview";
     if (it.src === "yt") return "YouTube · experimental";
     if (it.src === "audius") return "Audius";
@@ -120,8 +121,8 @@ function renderNow() {
         "<i>5</i></div>" +
         '<div class="tbtn">▶▶<i>6</i></div>' +
         "</div>" +
-        '<div class="pvol">VOL ' +
-        (S.muted ? "MUTED" : volBars(S.volume)) +
+        '<div class="pvol">' +
+        (S.muted ? "MUTED  (0)" : "Volume: phone keys") +
         "</div>" +
         '<div class="pstatus">' +
         statusText +
@@ -157,19 +158,28 @@ function render() {
         body.innerHTML = '<div class="msg">Loading…</div>';
         ftr.textContent = "Please wait…";
     } else if (c.type === "search") {
+        // Keep what the user typed (don't reset to S.query on every render).
+        if (c.sel === 1) {
+            try {
+                inp.blur();
+            } catch (e) {}
+        } else {
+            try {
+                inp.focus();
+            } catch (e) {}
+        }
         body.innerHTML =
-            '<div class="msg">Type a song or artist,<br>then press 5/OK to search.</div>';
-        ftr.textContent = "Type · 5/OK Search · ◀ Back";
-        inp.value = S.query || "";
-        try {
-            inp.focus();
-        } catch (e) {}
+            '<div class="row gobtn' +
+            (c.sel === 1 ? " sel" : "") +
+            '"><span class="nm">▶  SEARCH</span></div>' +
+            '<div class="msg">Type a song or artist above.<br>Press ▼ then 5/OK to search.</div>';
+        ftr.textContent = "Type · ▼ Go · 5/OK Search · ◀ Back";
     } else if (c.type === "list") {
         body.innerHTML = renderList(c);
         ftr.textContent = "▲▼ · 5 Play · # Fav · ◀ Back";
     } else if (c.type === "now") {
         body.innerHTML = renderNow();
-        ftr.textContent = "5 Play · 6 Next · ▲▼ Vol · ◀ Back";
+        ftr.textContent = "5 Play · 6 Next · 0 Mute · ◀ Back";
     }
 
     var sel = body.querySelector(".sel");

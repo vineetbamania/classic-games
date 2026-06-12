@@ -45,7 +45,8 @@ function goBack() {
 // ---- screen openers ----
 function openMenuItem(act) {
     if (act === "search") {
-        push({ type: "search", title: "Search Songs" });
+        document.getElementById("q").value = ""; // fresh query
+        push({ type: "search", title: "Search Songs", sel: 0 }); // sel 0=input, 1=Go button
     } else if (act === "trending") {
         push({ type: "loading", title: "Trending Songs" });
         trendingTracks(
@@ -95,20 +96,24 @@ function submitSearch() {
 // — each source has its own failure path and a 10s overall guard — so a slow or
 // dead source (Piped is often down) can't hang the search.
 function searchAll(q, done) {
-    var b = { audius: null, yt: null, itunes: null },
+    var b = { saavn: null, audius: null, yt: null, itunes: null },
         finished = false;
     function emit() {
         if (finished) return;
         finished = true;
-        done([].concat(b.audius || [], b.yt || [], b.itunes || []));
+        // JioSaavn (full mainstream) first, then Audius (full), YouTube
+        // (experimental full), then iTunes (30-sec previews) last.
+        done([].concat(b.saavn || [], b.audius || [], b.yt || [], b.itunes || []));
     }
     function check() {
-        if (b.audius !== null && b.yt !== null && b.itunes !== null) emit();
+        if (b.saavn !== null && b.audius !== null && b.yt !== null && b.itunes !== null) emit();
     }
+    searchJioSaavn(q, function (s) { b.saavn = s; check(); }, function () { b.saavn = []; check(); });
     searchTracks(q, function (a) { b.audius = a; check(); }, function () { b.audius = []; check(); });
     searchYt(q, function (y) { b.yt = y; check(); }, function () { b.yt = []; check(); });
     searchPreviews(q, function (p) { b.itunes = p; check(); }, function () { b.itunes = []; check(); });
     setTimeout(function () {
+        b.saavn = b.saavn || [];
         b.audius = b.audius || [];
         b.yt = b.yt || [];
         b.itunes = b.itunes || [];
@@ -176,16 +181,9 @@ function toggleCurrentFav() {
 
 // ---- navigation / actions ----
 function move(d) {
+    // Up/Down only navigate lists now; on the now-playing screen they fall
+    // through to the device (handled in the keydown listener above).
     var c = cur();
-    if (c.type === "now") {
-        S.volume = setVolume(S.volume + (d < 0 ? 0.1 : -0.1));
-        if (S.muted && S.volume > 0) {
-            S.muted = false;
-            setMuted(false);
-        }
-        render();
-        return;
-    }
     var n = c.items ? c.items.length : 0;
     if (!n) return;
     c.sel = (c.sel + d + n) % n;
@@ -233,13 +231,38 @@ function commandOf(e) {
 window.addEventListener("keydown", function (e) {
     var c = cur();
     if (c.type === "search") {
-        // The handset's text-input method types digits/letters into #q, so the
-        // number keys must stay free. We only intercept OK/Enter (run search) and
-        // D-pad Left / LSK-Escape (leave search) — Back here is the arrow, not '4'.
-        if (e.keyCode === 13 || e.key === "Enter") {
+        var kc = e.keyCode,
+            k = e.key;
+        // Two zones: the text input (c.sel 0) and the SEARCH button (c.sel 1).
+        // The number keys must stay free for typing, so we navigate between zones
+        // with the D-pad only (ArrowUp/Down), never with 2/4/6/8.
+        if (c.sel === 1) {
+            // SEARCH button focused (input blurred -> value is committed)
+            if (kc === 38 || k === "ArrowUp") {
+                e.preventDefault();
+                c.sel = 0;
+                render();
+            } else if (kc === 37 || k === "ArrowLeft") {
+                e.preventDefault();
+                goBack();
+            } else if (kc === 13 || kc === 53 || kc === 32 || kc === 27 || k === "Enter" || k === "5" || k === " " || k === "SoftLeft") {
+                e.preventDefault();
+                submitSearch();
+            }
+            return;
+        }
+        // Text input focused: only intercept D-pad keys; let number keys type.
+        if (kc === 40 || k === "ArrowDown") {
             e.preventDefault();
-            submitSearch();
-        } else if (e.keyCode === 37 || e.key === "ArrowLeft" || e.keyCode === 27 || e.key === "Escape") {
+            c.sel = 1; // move down to the SEARCH button
+            render();
+        } else if (kc === 13 || k === "Enter") {
+            e.preventDefault();
+            submitSearch(); // center/OK from the field also searches
+        } else if (kc === 27 || k === "Escape" || k === "SoftLeft") {
+            e.preventDefault();
+            submitSearch(); // LSK acts as "Search"
+        } else if (kc === 37 || k === "ArrowLeft") {
             e.preventDefault();
             goBack();
         }
@@ -247,6 +270,11 @@ window.addEventListener("keydown", function (e) {
     }
     var cmd = commandOf(e);
     if (!cmd) return;
+    // On the now-playing screen, let Up/Down pass straight through (no
+    // preventDefault, no handling) so the phone's own hardware volume can act on
+    // them. A web app cannot set device volume, and audio.volume is ignored on
+    // Cloud Phone — so consuming these keys here would only block the device.
+    if ((cmd === "up" || cmd === "down") && c.type === "now") return;
     e.preventDefault();
     if (cmd === "up") return move(-1); // nav may auto-repeat (hold to scroll)
     if (cmd === "down") return move(1);
