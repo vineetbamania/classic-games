@@ -170,22 +170,27 @@
                 highlight(0);
 
                 window.addEventListener("keydown", function (e) {
+                    // Cloud Phone: D-pad + numeric keypad (8 down, 2 up, 5 select).
                     switch (e.key) {
                         case "ArrowDown":
                         case "Down":
                         case "s":
+                        case "8":
                             e.preventDefault();
                             highlight(index + 1);
                             break;
                         case "ArrowUp":
                         case "Up":
                         case "w":
+                        case "2":
                             e.preventDefault();
                             highlight(index - 1);
                             break;
                         case "Enter":
                         case " ":
                         case "Spacebar":
+                        case "5":
+                        case "SoftLeft":
                             e.preventDefault();
                             items[index].click();
                             break;
