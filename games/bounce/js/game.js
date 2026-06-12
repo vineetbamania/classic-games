@@ -10,8 +10,7 @@ var W = 128,
 var GRAVITY = 0.3,
     BOUNCE = -5.5,
     MAXSPD = 2.2,
-    ACCEL = 0.35,
-    FRIC = 0.85,
+    ACCEL = 0.6, // reach full speed in ~4 frames — snappy but not instant
     BALLR = 5;
 var JUMP = -6.0;
 var canvas,
@@ -114,13 +113,18 @@ function update() {
     var px = b.x,
         py = b.y;
 
-    if (left) b.vx -= ACCEL;
-    if (right) b.vx += ACCEL;
-    if (b.vx > MAXSPD) b.vx = MAXSPD;
-    if (b.vx < -MAXSPD) b.vx = -MAXSPD;
-    if (!left && !right) {
-        b.vx *= FRIC;
-        if (b.vx > -0.03 && b.vx < 0.03) b.vx = 0;
+    // Horizontal control is intentionally snappy: the ball moves only while a
+    // direction is held, ramps to full speed in a few frames, reverses instantly,
+    // and STOPS the moment the key is released (no coasting/glide).
+    var dir = (right ? 1 : 0) - (left ? 1 : 0);
+    if (dir !== 0) {
+        if (dir > 0 && b.vx < 0) b.vx = 0; // instant turn-around
+        if (dir < 0 && b.vx > 0) b.vx = 0;
+        b.vx += dir * ACCEL;
+        if (b.vx > MAXSPD) b.vx = MAXSPD;
+        if (b.vx < -MAXSPD) b.vx = -MAXSPD;
+    } else {
+        b.vx = 0; // released -> stop now
     }
 
     if (jump && b.onGround) {

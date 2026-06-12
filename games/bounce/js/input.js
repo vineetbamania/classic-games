@@ -9,28 +9,36 @@ var left = false,
     right = false,
     jump = false,
     actQ = [];
+
+// key -> movement flag. Listed once so keydown and keyup can't drift apart
+// (a mismatch there is a classic "stuck key" bug).
+var MOVEKEY = {
+    ArrowLeft: "left", Left: "left", a: "left", A: "left", "4": "left",
+    ArrowRight: "right", Right: "right", d: "right", D: "right", "6": "right",
+    ArrowUp: "jump", Up: "jump", w: "jump", W: "jump", "2": "jump", "8": "jump",
+};
+function setMove(name, val) {
+    if (name === "left") left = val;
+    else if (name === "right") right = val;
+    else jump = val;
+}
+// Safety net: drop every held key. A missed keyup (focus leaves the window, an
+// overlay grabs it, the Cloud Phone host drops it) is the usual reason a button
+// "hangs up" — the down stays latched with no up to clear it. Clearing on focus
+// loss / tab hide guarantees the ball can't keep propelling on its own.
+function clearMoves() {
+    left = right = jump = false;
+}
+
 window.addEventListener("keydown", function (e) {
     initAudio();
+    var m = MOVEKEY[e.key];
+    if (m) {
+        setMove(m, true);
+        e.preventDefault();
+        return;
+    }
     switch (e.key) {
-        case "ArrowLeft":
-        case "Left":
-        case "a":
-        case "4":
-            left = true;
-            break;
-        case "ArrowRight":
-        case "Right":
-        case "d":
-        case "6":
-            right = true;
-            break;
-        case "ArrowUp":
-        case "Up":
-        case "w":
-        case "2":
-        case "8":
-            jump = true;
-            break;
         case " ":
         case "Enter":
         case "5": // center keypad key = OK / select
@@ -52,25 +60,10 @@ window.addEventListener("keydown", function (e) {
     }
 });
 window.addEventListener("keyup", function (e) {
-    switch (e.key) {
-        case "ArrowLeft":
-        case "Left":
-        case "a":
-        case "4":
-            left = false;
-            break;
-        case "ArrowRight":
-        case "Right":
-        case "d":
-        case "6":
-            right = false;
-            break;
-        case "ArrowUp":
-        case "Up":
-        case "w":
-        case "2":
-        case "8":
-            jump = false;
-            break;
-    }
+    var m = MOVEKEY[e.key];
+    if (m) setMove(m, false);
+});
+window.addEventListener("blur", clearMoves);
+document.addEventListener("visibilitychange", function () {
+    if (document.hidden) clearMoves();
 });
