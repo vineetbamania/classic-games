@@ -115,6 +115,12 @@ function next() {
         render();
     }
 }
+function prev() {
+    if (S.queue && S.qi > 0) {
+        playItem(S.queue, S.qi - 1);
+        render();
+    }
+}
 
 // ---- favourites ----
 function toggleCurrentFav() {
@@ -181,6 +187,7 @@ function commandOf(e) {
     if (kc === 37 || kc === 52 || kc === 8 || k === "ArrowLeft" || k === "4" || k === "a" || k === "A" || k === "Backspace") return "back";
     if (kc === 39 || kc === 54 || k === "ArrowRight" || k === "6" || k === "d" || k === "D") return "right";
     if (kc === 13 || kc === 53 || kc === 32 || kc === 27 || k === "Enter" || k === "5" || k === " " || k === "SoftLeft") return "ok";
+    if (kc === 49 || k === "1") return "prev"; // player: previous track
     if (k === "#" || k === "*") return "fav";
     if (kc === 48 || k === "0" || k === "m" || k === "M") return "mute";
     return null;
@@ -210,7 +217,9 @@ window.addEventListener("keydown", function (e) {
     if (!debounced(cmd)) return;
     if (cmd === "ok") activate();
     else if (cmd === "right") rightAction();
-    else if (cmd === "back") goBack();
+    else if (cmd === "prev") {
+        if (cur().type === "now") prev();
+    } else if (cmd === "back") goBack();
     else if (cmd === "fav") toggleCurrentFav();
     else if (cmd === "mute") {
         S.muted = !S.muted;

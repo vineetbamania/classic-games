@@ -86,6 +86,7 @@ function fetchStations(genre, cb, errcb) {
                     codec: s.codec || "",
                     bitrate: s.bitrate || 0,
                     countrycode: s.countrycode || s.country || "",
+                    art: /^https:/i.test(s.favicon) ? s.favicon : "",
                 });
             }
             cb(out);

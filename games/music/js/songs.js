@@ -23,6 +23,7 @@ function audiusGet(path, cb, err) {
 
 // Normalize an Audius track into our unified playable-item shape.
 function audiusTrack(t) {
+    var art = (t.artwork && (t.artwork["150x150"] || t.artwork["480x480"])) || "";
     return {
         kind: "track",
         id: t.id,
@@ -30,6 +31,7 @@ function audiusTrack(t) {
         sub: (t.user && t.user.name) || "Unknown artist",
         url: AUDIUS + "/v1/tracks/" + t.id + "/stream?app_name=" + AUDIUS_APP,
         duration: t.duration || 0,
+        art: art,
     };
 }
 
