@@ -20,14 +20,22 @@ function fmtTime(s) {
         ss = s % 60;
     return m + ":" + (ss < 10 ? "0" : "") + ss;
 }
+function srcTag(it) {
+    if (it.src === "itunes") return "30s";
+    if (it.src === "yt") return "YT";
+    if (it.kind === "track") return it.duration ? fmtTime(it.duration) : "";
+    return (it.bitrate ? it.bitrate + "k " : "") + (it.countrycode || "");
+}
+function srcLabel(it) {
+    if (it.src === "itunes") return "iTunes · 30-sec preview";
+    if (it.src === "yt") return "YouTube · experimental";
+    if (it.src === "audius") return "Audius";
+    if (it.kind === "station") return "Radio";
+    return "";
+}
 function itemRow(it, selected) {
     var star = isFav(it) ? "★ " : "";
-    var meta =
-        it.kind === "track"
-            ? it.duration
-                ? fmtTime(it.duration)
-                : ""
-            : (it.bitrate ? it.bitrate + "k " : "") + (it.countrycode || "");
+    var meta = srcTag(it);
     return (
         '<div class="row' +
         (selected ? " sel" : "") +
@@ -100,6 +108,9 @@ function renderNow() {
         "</div>" +
         '<div class="partist">' +
         esc(it.sub || "") +
+        "</div>" +
+        '<div class="psrc">' +
+        esc(srcLabel(it)) +
         "</div>" +
         progress +
         '<div class="transport">' +

@@ -77,31 +77,68 @@ function openGenre(genre) {
 }
 
 function submitSearch() {
+    if (cur().type !== "search") return;
     var val = (document.getElementById("q").value || "").trim();
     if (!val) {
         goBack();
         return;
     }
     S.query = val;
-    push({ type: "loading", title: "Search" });
-    searchTracks(
-        val,
-        function (items) {
-            replaceTop({ type: "list", title: 'Search: "' + val + '"', items: items, sel: 0, source: "tracks" });
-        },
-        function () {
-            replaceTop({ type: "list", title: "Search", items: [], sel: 0, source: "tracks", error: "Search failed" });
-        },
-    );
+    push({ type: "loading", title: "Searching…" });
+    searchAll(val, function (items) {
+        replaceTop({ type: "list", title: 'Search: "' + val + '"', items: items, sel: 0, source: "tracks" });
+    });
+}
+
+// Search all three sources in parallel and merge: full songs first (Audius, then
+// experimental YouTube), then mainstream 30-sec previews (iTunes). Always resolves
+// — each source has its own failure path and a 10s overall guard — so a slow or
+// dead source (Piped is often down) can't hang the search.
+function searchAll(q, done) {
+    var b = { audius: null, yt: null, itunes: null },
+        finished = false;
+    function emit() {
+        if (finished) return;
+        finished = true;
+        done([].concat(b.audius || [], b.yt || [], b.itunes || []));
+    }
+    function check() {
+        if (b.audius !== null && b.yt !== null && b.itunes !== null) emit();
+    }
+    searchTracks(q, function (a) { b.audius = a; check(); }, function () { b.audius = []; check(); });
+    searchYt(q, function (y) { b.yt = y; check(); }, function () { b.yt = []; check(); });
+    searchPreviews(q, function (p) { b.itunes = p; check(); }, function () { b.itunes = []; check(); });
+    setTimeout(function () {
+        b.audius = b.audius || [];
+        b.yt = b.yt || [];
+        b.itunes = b.itunes || [];
+        emit();
+    }, 10000);
 }
 
 // ---- playback ----
 function playItem(items, idx) {
     S.queue = items;
     S.qi = idx;
-    S.current = items[idx];
+    var it = items[idx];
+    S.current = it;
     S.status = "loading";
-    playUrl(S.current.url);
+    if (it.src === "yt" && !it.url) {
+        // YouTube/Piped streams are resolved lazily (a second API call) so the
+        // search list loads fast; if it can't be resolved, mark it unavailable.
+        resolveYt(it.vid, function (url) {
+            if (S.current !== it) return; // user already moved on
+            if (url) {
+                it.url = url;
+                playUrl(url);
+            } else {
+                S.status = "error";
+                if (cur().type === "now") render();
+            }
+        });
+    } else {
+        playUrl(it.url);
+    }
 }
 function selectInList() {
     var c = cur();
@@ -247,6 +284,23 @@ function boot() {
         },
     );
     setVolume(S.volume);
+    // Search submit is wired on the input itself, because on a feature phone the
+    // typed text isn't committed to .value until the IME fires `change` (when you
+    // press OK to confirm the field) — and the confirm key may never reach the
+    // window as Enter. `change` is the reliable trigger; only act if there's text
+    // so a blur with an empty field doesn't bounce the user back.
+    var q = document.getElementById("q");
+    function searchIfTyped() {
+        if (cur().type === "search" && (q.value || "").trim()) submitSearch();
+    }
+    q.addEventListener("change", searchIfTyped);
+    q.addEventListener("search", searchIfTyped);
+    q.addEventListener("keydown", function (e) {
+        if (e.keyCode === 13 || e.key === "Enter") {
+            e.preventDefault();
+            submitSearch();
+        }
+    });
     S.stack = [homeScreen()];
     render();
 }

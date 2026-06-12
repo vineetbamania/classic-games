@@ -61,10 +61,13 @@ Same zero-build, modular, script-tags-in-order pattern as Bounce, but **DOM-base
 held-button/dropped-keyup problem that plagues a real-time game over Cloud Phone's
 remote key channel.
 
-Both content sources are free/open, keyless, CORS-enabled, and serve **https**
-streams (an https page can't play http audio — mixed content):
-- `js/songs.js` — [Audius](https://audius.org) client (no key, just an `app_name`). Full-length tracks via `/v1/tracks/trending` and `/v1/tracks/search`; the `/v1/tracks/{id}/stream` endpoint returns `audio/mpeg` playable in a plain `<audio>`.
-- `js/api.js` — [Radio-Browser](https://www.radio-browser.info) client. Tries several mirror hosts in order; keeps https streams only; falls back to a built-in SomaFM list if every mirror is down. `GENRES` = the radio browse categories.
+Content sources are all free/open and serve **https** (an https page can't play http audio — mixed content). **Search merges three song sources** (see `searchAll` in app.js); each runs in parallel with its own failure path + a 10s guard so a slow/dead source can't hang the search. Results are tagged by `src` and ordered full-songs-first:
+- `js/songs.js` — [Audius](https://audius.org) (no key, `app_name` only). **Full songs** via `/v1/tracks/trending` + `/v1/tracks/search`; `/v1/tracks/{id}/stream` returns `audio/mpeg`. CORS OK.
+- `js/previews.js` — [iTunes Search API](https://itunes.apple.com/search) for **mainstream 30-sec previews**. iTunes sends no CORS header, so this uses **JSONP** (`?callback=` via injected `<script>`) — works on localhost/Pages/Cloud Phone alike.
+- `js/yt.js` — **EXPERIMENTAL** YouTube via [Piped](https://github.com/TeamPiped/Piped) public instances (full songs, no own backend). Two-step: search returns video ids, the stream URL is **resolved lazily on play** (`resolveYt`). Public instances are frequently down/blocked and it's a YouTube-ToS grey area, so it's best-effort — if every `PIPED_HOST` fails, `searchYt` returns nothing and the other two sources carry the search. Update the host list if YT results stop appearing.
+- `js/api.js` — [Radio-Browser](https://www.radio-browser.info) for radio stations. Tries several mirror hosts; https only; built-in SomaFM fallback if every mirror is down. `GENRES` = the radio browse categories.
+
+Unified item shape `{kind, src, id, name, sub, url, duration, art, vid?, preview?}`. YT items carry `vid` (no `url` until resolved); favourites persist `src`/`vid`/`preview` so YT/preview items replay. **Search submit is `change`-driven** (feature-phone IMEs only commit the field value on `change`/OK, not keystroke) with Enter as a desktop fallback.
 - `js/favorites.js` — localStorage-backed favourites (tracks + stations), with in-memory fallback if storage is blocked. Items keyed by `kind:id-or-url`.
 - `js/player.js` — `<audio>` wrapper; `onState` (loading/buffering/playing/paused/error/ended) + `onProgress` (seek bar). Audio reaches the handset because Cloud Phone streams `<audio>`/`<video>` output (HLS confirmed supported) — unlike **Web Audio synthesis**, which only plays on the server (that's why Bounce's beeps are silent on a real phone). Playback starts from a keypress (gesture) for autoplay policy.
 - `js/ui.js` — renders the current screen from the stack (`menu`/`genres`/`list`/`search`/`now`); favourited rows show ★; tracks get a progress bar, stations show ● LIVE.

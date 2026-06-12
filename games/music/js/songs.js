@@ -26,6 +26,7 @@ function audiusTrack(t) {
     var art = (t.artwork && (t.artwork["150x150"] || t.artwork["480x480"])) || "";
     return {
         kind: "track",
+        src: "audius",
         id: t.id,
         name: (t.title || "Unknown").replace(/\s+/g, " ").trim(),
         sub: (t.user && t.user.name) || "Unknown artist",

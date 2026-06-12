@@ -38,11 +38,15 @@ function toggleFav(it) {
     }
     _favs.unshift({
         kind: it.kind,
+        src: it.src || "",
         id: it.id || null,
+        vid: it.vid || "", // YT needs this to re-resolve its stream on replay
+        preview: !!it.preview,
         name: it.name,
         sub: it.sub || "",
         url: it.url,
         duration: it.duration || 0,
+        art: it.art || "",
     });
     favSave();
     return true;
