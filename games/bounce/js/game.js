@@ -275,6 +275,7 @@ function refreshHUD() {
 
 // ==================== LOOP ====================
 function loop() {
+    pollInput(); // refresh held controls from the dead-man's-switch deadlines
     var act;
     while ((act = actQ.shift())) {
         switch (phase) {
