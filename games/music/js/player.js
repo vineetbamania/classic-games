@@ -1,15 +1,17 @@
 // ==================== AUDIO PLAYER (HTML5 <audio> wrapper) ====================
-// Cloud Phone runs a server-side Chromium and streams audio to the handset, so a
-// plain <audio> element is all we need. We surface playback state through a
-// callback so the UI can show Connecting / Buffering / Playing / Paused / Error.
-// Audio is started from a key press (a user gesture), which satisfies Chromium's
-// autoplay policy.
+// Cloud Phone streams <audio>/<video> element output to the handset (unlike Web
+// Audio synthesis, which only plays on the server). Playback starts from a key
+// press (user gesture) to satisfy autoplay policy.
+//   onState(status)   -> loading|buffering|playing|paused|error|ended
+//   onProgress()       -> fired on timeupdate / loadedmetadata (for the seek bar)
 var audio = null,
-    playerOnState = null;
+    playerOnState = null,
+    playerOnProgress = null;
 
-function playerInit(el, stateCb) {
+function playerInit(el, stateCb, progressCb) {
     audio = el;
     playerOnState = stateCb;
+    playerOnProgress = progressCb;
     audio.preload = "none";
     var MAP = {
         loadstart: "loading",
@@ -24,9 +26,18 @@ function playerInit(el, stateCb) {
             if (playerOnState) playerOnState(MAP[ev]);
         });
     });
+    audio.addEventListener("ended", function () {
+        if (playerOnState) playerOnState("ended");
+    });
+    audio.addEventListener("timeupdate", function () {
+        if (playerOnProgress) playerOnProgress();
+    });
+    audio.addEventListener("loadedmetadata", function () {
+        if (playerOnProgress) playerOnProgress();
+    });
 }
 
-function playStation(url) {
+function playUrl(url) {
     if (playerOnState) playerOnState("loading");
     audio.src = url;
     try {
@@ -57,7 +68,12 @@ function setVolume(v) {
     audio.volume = v;
     return v;
 }
-
 function setMuted(m) {
     audio.muted = m;
+}
+function curTime() {
+    return audio.currentTime || 0;
+}
+function curDur() {
+    return isFinite(audio.duration) ? audio.duration : 0;
 }

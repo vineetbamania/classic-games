@@ -54,15 +54,21 @@ Key pieces:
 ### Reverse-engineering tools
 `tools/jdis.py` is a dependency-free (no JDK) JVM `.class` disassembler used to recover the tile renderer from the obfuscated JAR. `Cls(path)` parses the constant pool/fields/methods; `disasm(cls, name, desc)` prints bytecode. This is how `atlas.js`'s `DA`/`DB`/`ATLAS`/`TILE` tables were derived from classes `b` (renderer) and `d` (the two `int[]` composite tables) — re-run it against `/tmp` JAR extractions if tile mappings ever need re-verifying.
 
-### CloudFM — internet radio (games/music/)
-The second app: a feature-phone internet-radio player. Same zero-build, modular,
-script-tags-in-order pattern as Bounce, but **DOM-based** (lists/text, not canvas)
-and **discrete input** — which deliberately sidesteps the held-button/dropped-keyup
-problem that plagues a real-time game over Cloud Phone's remote key channel.
-- `js/api.js` — [Radio-Browser](https://www.radio-browser.info) client (free/open, no key). Tries several mirror hosts in order; keeps **https streams only** (an https page can't play http audio — mixed content); falls back to a built-in SomaFM list if every mirror is unreachable. `GENRES` defines the browse categories.
-- `js/player.js` — thin `<audio>` wrapper; surfaces loading/buffering/playing/paused/error via a state callback. Audio reaches the handset because Cloud Phone streams it (HLS/audio confirmed supported); playback starts from a keypress (gesture) to satisfy autoplay policy.
-- `js/ui.js` — renders the three screens (`home` genres → `list` stations → `now` playing) from global state `S`, scrolling the selected row into view.
-- `js/app.js` — state machine + input. **Nav keys (up/down) auto-repeat** (hold to scroll/ramp volume); **action keys (OK/back/mute) ignore `e.repeat`** + a 150ms debounce so a held button can't cascade through screens. Keys resolve by `keyCode` first, `key` second (T9 digits arrive inconsistently as one or the other).
+### CloudFM — music player (games/music/)
+The second app: a feature-phone music player (full songs **and** internet radio).
+Same zero-build, modular, script-tags-in-order pattern as Bounce, but **DOM-based**
+(lists/text, not canvas) and **discrete input** — which deliberately sidesteps the
+held-button/dropped-keyup problem that plagues a real-time game over Cloud Phone's
+remote key channel.
+
+Both content sources are free/open, keyless, CORS-enabled, and serve **https**
+streams (an https page can't play http audio — mixed content):
+- `js/songs.js` — [Audius](https://audius.org) client (no key, just an `app_name`). Full-length tracks via `/v1/tracks/trending` and `/v1/tracks/search`; the `/v1/tracks/{id}/stream` endpoint returns `audio/mpeg` playable in a plain `<audio>`.
+- `js/api.js` — [Radio-Browser](https://www.radio-browser.info) client. Tries several mirror hosts in order; keeps https streams only; falls back to a built-in SomaFM list if every mirror is down. `GENRES` = the radio browse categories.
+- `js/favorites.js` — localStorage-backed favourites (tracks + stations), with in-memory fallback if storage is blocked. Items keyed by `kind:id-or-url`.
+- `js/player.js` — `<audio>` wrapper; `onState` (loading/buffering/playing/paused/error/ended) + `onProgress` (seek bar). Audio reaches the handset because Cloud Phone streams `<audio>`/`<video>` output (HLS confirmed supported) — unlike **Web Audio synthesis**, which only plays on the server (that's why Bounce's beeps are silent on a real phone). Playback starts from a keypress (gesture) for autoplay policy.
+- `js/ui.js` — renders the current screen from the stack (`menu`/`genres`/`list`/`search`/`now`); favourited rows show ★; tracks get a progress bar, stations show ● LIVE.
+- `js/app.js` — **screen-stack** state machine (Back = pop). Unified track/station item shape `{kind, name, sub, url, ...}` drives a shared play queue (Next + auto-advance on `ended`). Input: **nav keys (up/down) auto-repeat**; **action keys (ok/right/back/fav/mute) ignore `e.repeat`** + 150ms debounce. Keys resolve by `keyCode` first then `key` (T9 digits arrive as one or the other). On the **search** screen the number keys are left free for the handset's text-input method — only OK/Enter (search) and D-pad-Left/Escape (leave) are intercepted, never `4`.
 
 ### Adding a game
 Add a folder under `games/`, then add a `.game-item` `<a>` linking to it in the root `index.html` `#game-list` (there's a `<!-- More games can be added here -->` marker). The menu's arrow-key navigation script picks up new items automatically.

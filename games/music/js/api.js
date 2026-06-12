@@ -32,12 +32,12 @@ var GENRES = [
 // Last-resort list if EVERY mirror is unreachable — SomaFM, commercial-free,
 // listener-supported, served over https.
 var FALLBACK = [
-    { name: "SomaFM: Groove Salad", url: "https://ice1.somafm.com/groovesalad-128-mp3", codec: "MP3", bitrate: 128, countrycode: "US" },
-    { name: "SomaFM: Drone Zone", url: "https://ice1.somafm.com/dronezone-128-mp3", codec: "MP3", bitrate: 128, countrycode: "US" },
-    { name: "SomaFM: Lush", url: "https://ice1.somafm.com/lush-128-mp3", codec: "MP3", bitrate: 128, countrycode: "US" },
-    { name: "SomaFM: Indie Pop Rocks", url: "https://ice1.somafm.com/indiepop-128-mp3", codec: "MP3", bitrate: 128, countrycode: "US" },
-    { name: "SomaFM: Secret Agent", url: "https://ice1.somafm.com/secretagent-128-mp3", codec: "MP3", bitrate: 128, countrycode: "US" },
-    { name: "SomaFM: Beat Blender", url: "https://ice1.somafm.com/beatblender-128-mp3", codec: "MP3", bitrate: 128, countrycode: "US" },
+    { kind: "station", name: "SomaFM: Groove Salad", sub: "US", url: "https://ice1.somafm.com/groovesalad-128-mp3", codec: "MP3", bitrate: 128, countrycode: "US" },
+    { kind: "station", name: "SomaFM: Drone Zone", sub: "US", url: "https://ice1.somafm.com/dronezone-128-mp3", codec: "MP3", bitrate: 128, countrycode: "US" },
+    { kind: "station", name: "SomaFM: Lush", sub: "US", url: "https://ice1.somafm.com/lush-128-mp3", codec: "MP3", bitrate: 128, countrycode: "US" },
+    { kind: "station", name: "SomaFM: Indie Pop Rocks", sub: "US", url: "https://ice1.somafm.com/indiepop-128-mp3", codec: "MP3", bitrate: 128, countrycode: "US" },
+    { kind: "station", name: "SomaFM: Secret Agent", sub: "US", url: "https://ice1.somafm.com/secretagent-128-mp3", codec: "MP3", bitrate: 128, countrycode: "US" },
+    { kind: "station", name: "SomaFM: Beat Blender", sub: "US", url: "https://ice1.somafm.com/beatblender-128-mp3", codec: "MP3", bitrate: 128, countrycode: "US" },
 ];
 
 // Try each mirror until one returns JSON; call errcb if all fail.
@@ -79,7 +79,9 @@ function fetchStations(genre, cb, errcb) {
                 if (!nm || seen[u]) continue;
                 seen[u] = 1;
                 out.push({
+                    kind: "station",
                     name: nm,
+                    sub: s.countrycode || s.country || "",
                     url: u,
                     codec: s.codec || "",
                     bitrate: s.bitrate || 0,

@@ -82,8 +82,38 @@
                 background: #1a3a60;
                 color: #8ac0e0;
             }
-            .row.sel .mt {
+            .row .sub {
+                color: #3a5a70;
+            }
+            .row.sel .mt,
+            .row.sel .sub {
                 color: #5a8ab0;
+            }
+            .search-in {
+                display: none;
+                width: calc(100% - 12px);
+                margin: 8px 6px 0;
+                padding: 5px 6px;
+                background: #0a1a30;
+                border: 2px solid #2a5a90;
+                border-radius: 4px;
+                color: #8ac0e0;
+                font-family: "Courier New", monospace;
+                font-size: 12px;
+                outline: none;
+            }
+            /* track progress bar */
+            .bar {
+                height: 5px;
+                margin: 8px 16px 0;
+                background: #0a1a30;
+                border: 1px solid #1a3a60;
+                border-radius: 3px;
+                overflow: hidden;
+            }
+            .fill {
+                height: 100%;
+                background: #0853aa;
             }
             .msg {
                 padding: 16px 8px;
@@ -132,17 +162,28 @@
     <body>
         <div class="app">
             <div class="hdr" id="hdr">CloudFM</div>
+            <input
+                id="q"
+                class="search-in"
+                type="text"
+                autocomplete="off"
+                placeholder="Search…"
+            />
             <div class="body" id="body"></div>
             <div class="ftr" id="ftr"></div>
         </div>
         <audio id="audio"></audio>
 
         <!-- Modules load in order; app.js boots last.
-             api.js    - Radio-Browser (free/open) client + genres + fallback
-             player.js - <audio> wrapper (play/pause/volume/state events)
-             ui.js     - DOM rendering of the current screen
-             app.js    - state machine, T9/D-pad input, boot -->
+             api.js       - Radio-Browser (free/open) radio stations + genres
+             songs.js     - Audius (free/open) full-length songs: trending + search
+             favorites.js - localStorage favourites (tracks + stations)
+             player.js    - <audio> wrapper (play/pause/volume/seek/state)
+             ui.js        - DOM rendering of the current screen
+             app.js       - screen-stack state machine, T9/D-pad input, boot -->
         <script src="js/api.js"></script>
+        <script src="js/songs.js"></script>
+        <script src="js/favorites.js"></script>
         <script src="js/player.js"></script>
         <script src="js/ui.js"></script>
         <script src="js/app.js"></script>
